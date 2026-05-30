@@ -682,3 +682,60 @@ contract JPevinLoop {
             bool open,
             bool executed
         )
+    {
+        RebalanceLane storage l = _lanes[poolId][laneId];
+        return (l.targetTag, l.sourceTag, l.proposer, l.filedAt, l.executeAfter, l.notionalWei, l.open, l.executed);
+    }
+
+    function readPlan(uint256 planId)
+        external
+        view
+        returns (
+            bytes32 scheduleTag,
+            address owner,
+            uint64 poolId,
+            uint64 intervalSec,
+            uint64 nextRunAt,
+            uint256 sliceWei,
+            bool active
+        )
+    {
+        CompoundPlan storage c = _plans[planId];
+        return (c.scheduleTag, c.owner, c.poolId, c.intervalSec, c.nextRunAt, c.sliceWei, c.active);
+    }
+
+    function apyHistoryLength(uint64 poolId) external view returns (uint256) {
+        return _apyHistory[poolId].length;
+    }
+
+    function readApySnapshot(uint64 poolId, uint256 index)
+        external
+        view
+        returns (bytes32 blendHash, uint32 sampleBps, uint64 capturedAt, uint64 epoch)
+    {
+        ApySnapshot storage snap = _apyHistory[poolId][index];
+        return (snap.blendHash, snap.sampleBps, snap.capturedAt, snap.epoch);
+    }
+
+    function poolsOf(address depositor) external view returns (uint64[] memory) {
+        return _poolsOf[depositor];
+    }
+
+    function depositorsOf(uint64 poolId) external view returns (address[] memory) {
+        return _depositors[poolId];
+    }
+
+    function positionDigest(uint64 poolId, address depositor, uint64 ticket) external pure returns (bytes32) {
+        return JPLDigestFork.positionTag(poolId, depositor, ticket);
+    }
+
+    function splitDigest(bytes32 root, address actor, uint64 nonce) external pure returns (bytes32 hA, bytes32 hB) {
+        return JPLDigestFork.splitPair(root, actor, nonce);
+    }
+
+    function fusedDigest(bytes32 hA, bytes32 hB) external pure returns (bytes32) {
+        return JPLDigestFork.fuse(hA, hB);
+    }
+
+    function anchorA() external view returns (address) {
+        return ADDRESS_A;
