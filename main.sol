@@ -112,3 +112,60 @@ contract JPevinLoop {
         bool revoked;
     }
 
+    struct RebalanceLane {
+        bytes32 targetTag;
+        bytes32 sourceTag;
+        address proposer;
+        uint64 poolId;
+        uint64 filedAt;
+        uint64 executeAfter;
+        uint256 notionalWei;
+        bool open;
+        bool executed;
+    }
+
+    struct ApySnapshot {
+        bytes32 blendHash;
+        uint32 sampleBps;
+        uint64 capturedAt;
+        uint64 epoch;
+    }
+
+    struct CompoundPlan {
+        bytes32 scheduleTag;
+        address owner;
+        uint64 poolId;
+        uint64 intervalSec;
+        uint64 nextRunAt;
+        uint256 sliceWei;
+        bool active;
+    }
+
+    address public curator;
+    address public pendingCurator;
+    bool public frozen;
+
+    uint64 public genesisNonce;
+    uint64 public deployChainId;
+    uint64 public lastPoolId;
+    uint256 public globalHarvestCount;
+    uint256 public globalDepositWei;
+    uint256 public rebalanceSeq;
+    uint256 public compoundSeq;
+    uint256 public harvestLeafSeq;
+
+    mapping(uint64 => YieldPool) private _pools;
+    mapping(uint64 => mapping(address => DepositorSeat)) private _seats;
+    mapping(uint64 => mapping(address => bool)) private _joined;
+    mapping(uint64 => mapping(uint64 => HarvestRing)) private _rings;
+    mapping(uint64 => mapping(uint64 => RebalanceLane)) private _lanes;
+    mapping(uint64 => ApySnapshot[]) private _apyHistory;
+    mapping(uint256 => CompoundPlan) private _plans;
+    mapping(bytes32 => bool) private _usedHarvestProof;
+    mapping(address => uint64[]) private _poolsOf;
+    mapping(uint64 => address[]) private _depositors;
+
+    uint256 private _guard = 1;
+
+    error JPL_NotCurator(address caller);
+    error JPL_NotPendingCurator(address caller);
