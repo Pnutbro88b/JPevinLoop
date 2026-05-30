@@ -625,3 +625,60 @@ contract JPevinLoop {
             p.curatorNote,
             p.status,
             p.harvestOpen,
+            p.sealed,
+            p.openedAt,
+            p.closesAt,
+            p.harvestCount,
+            p.depositorCount,
+            p.totalAssetsWei,
+            p.totalShares,
+            p.tipReserve
+        );
+    }
+
+    function readSeat(uint64 poolId, address depositor)
+        external
+        view
+        returns (
+            bytes32 intentHash,
+            bytes32 lastHarvestTag,
+            bool active,
+            uint64 joinedAt,
+            uint256 shares,
+            uint256 creditedWei,
+            uint64 lastHarvestAt
+        )
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.intentHash, s.lastHarvestTag, s.active, s.joinedAt, s.shares, s.creditedWei, s.lastHarvestAt);
+    }
+
+    function readRing(uint64 poolId, uint64 ringId)
+        external
+        view
+        returns (
+            bytes32 yieldProof,
+            bytes32 apyBlend,
+            address reporter,
+            uint64 recordedAt,
+            uint32 apySampleBps,
+            bool revoked
+        )
+    {
+        HarvestRing storage r = _rings[poolId][ringId];
+        return (r.yieldProof, r.apyBlend, r.reporter, r.recordedAt, r.apySampleBps, r.revoked);
+    }
+
+    function readLane(uint64 poolId, uint64 laneId)
+        external
+        view
+        returns (
+            bytes32 targetTag,
+            bytes32 sourceTag,
+            address proposer,
+            uint64 filedAt,
+            uint64 executeAfter,
+            uint256 notionalWei,
+            bool open,
+            bool executed
+        )
