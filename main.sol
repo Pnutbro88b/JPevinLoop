@@ -397,3 +397,60 @@ contract JPevinLoop {
 
         emit JPL_Deposited(poolId, msg.sender, msg.value, shares, p.totalAssetsWei);
     }
+
+    function withdraw(uint64 poolId, uint256 shareAmt) external whenUnfrozen nonReentrant {
+        if (shareAmt == 0) revert JPL_WithdrawZero();
+        YieldPool storage p = _requirePool(poolId);
+        DepositorSeat storage seat = _seats[poolId][msg.sender];
+        if (!seat.active) revert JPL_NotJoined(poolId, msg.sender);
+        if (seat.shares < shareAmt) revert JPL_SharesInsufficient(shareAmt, seat.shares);
+
+        uint256 assetsOut = JPLYieldMath.assetsFromShares(shareAmt, p.totalAssetsWei, p.totalShares);
+        if (assetsOut > p.totalAssetsWei) revert JPL_AssetsInsufficient(assetsOut, p.totalAssetsWei);
+
+        seat.shares -= shareAmt;
+        p.totalShares -= shareAmt;
+        p.totalAssetsWei -= assetsOut;
+
+        if (seat.shares == 0) {
+            seat.active = false;
+            p.depositorCount -= 1;
+        }
+
+        _sendWei(msg.sender, assetsOut);
+        emit JPL_Withdrawn(poolId, msg.sender, shareAmt, assetsOut, p.totalAssetsWei);
+    }
+
+    function logHarvest(uint64 poolId, bytes32 yieldProof, uint32 apySampleBps) external payable whenUnfrozen {
+        if (yieldProof == bytes32(0)) revert JPL_StrategyRootZero();
+        if (apySampleBps > MAX_STRATEGY_BPS) revert JPL_ApySampleTooHigh(apySampleBps);
+        if (msg.value < MIN_HARVEST_TIP_WEI) revert JPL_HarvestTipShort(msg.value, MIN_HARVEST_TIP_WEI);
+        if (_usedHarvestProof[yieldProof]) revert JPL_HarvestProofReplay(yieldProof);
+
+        YieldPool storage p = _requireLivePool(poolId);
+        if (!p.harvestOpen) revert JPL_PoolSealed(poolId);
+
+        uint64 ringId = p.harvestCount;
+        HarvestRing storage ring = _rings[poolId][ringId];
+        ring.yieldProof = yieldProof;
+        ring.reporter = msg.sender;
+        ring.poolId = poolId;
+        ring.recordedAt = uint64(block.timestamp);
+        ring.apySampleBps = apySampleBps;
+        ring.apyBlend = JPLYieldMath.blendApy(p.strategyRoot, apySampleBps, ringId);
+
+        p.harvestCount += 1;
+        p.tipReserve += msg.value;
+        globalHarvestCount += 1;
+        harvestLeafSeq += 1;
+        _usedHarvestProof[yieldProof] = true;
+
+        _pushApySnapshot(poolId, apySampleBps, ring.apyBlend, ringId);
+
+        emit JPL_HarvestLogged(poolId, ringId, msg.sender, yieldProof, apySampleBps, ring.recordedAt);
+        emit JPL_TipReceived(poolId, msg.sender, msg.value, p.tipReserve);
+    }
+
+    function revokeHarvest(uint64 poolId, uint64 ringId) external onlyCurator {
+        HarvestRing storage ring = _rings[poolId][ringId];
+        if (ring.recordedAt == 0) revert JPL_RingUnknown(poolId, ringId);
