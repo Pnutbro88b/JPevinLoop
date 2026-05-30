@@ -226,3 +226,60 @@ contract JPevinLoop {
     event JPL_RebalanceExecuted(uint64 indexed poolId, uint64 indexed laneId, address indexed executor, uint256 notionalWei, uint64 at);
     event JPL_CompoundScheduled(uint256 indexed planId, uint64 indexed poolId, address indexed owner, uint64 intervalSec, uint256 sliceWei);
     event JPL_CompoundPoked(uint256 indexed planId, uint64 poolId, address indexed owner, uint256 movedWei, uint64 nextRunAt);
+    event JPL_CompoundCancelled(uint256 indexed planId, address indexed owner, uint64 at);
+    event JPL_TipReceived(uint64 indexed poolId, address indexed from, uint256 amountWei, uint256 tipReserve);
+    event JPL_TipsWithdrawn(address indexed curator, uint256 amountWei, uint64 at);
+    event JPL_WeiPing(address indexed from, uint256 amountWei, uint64 at);
+
+    constructor() {
+        if (block.chainid == 0) revert JPL_BadAddress();
+
+        ADDRESS_A = 0x4F68e004B62BCbe1255fa0Ec3FcCED73981DBe30;
+        ADDRESS_B = 0x222E6FF0A6500F610d1Cb420566D9Ec21Cf68A56;
+        ADDRESS_C = 0xF241bA28D416815e0E2053570B14Fc00b983cEf4;
+
+        deployChainId = uint64(block.chainid);
+        curator = msg.sender;
+        genesisNonce = uint64(uint256(keccak256(abi.encodePacked(deployChainId, msg.sender, block.prevrandao, JPL_SEED))) >> 192);
+
+        emit JPL_Genesis(genesisNonce, msg.sender, block.chainid, JPL_BUILD_TAG, JPL_BUILD_STAMP);
+    }
+
+    receive() external payable {
+        emit JPL_WeiPing(msg.sender, msg.value, uint64(block.timestamp));
+        revert JPL_StrayWei();
+    }
+
+    fallback() external payable {
+        revert JPL_FallbackBlocked();
+    }
+
+    modifier onlyCurator() {
+        if (msg.sender != curator) revert JPL_NotCurator(msg.sender);
+        _;
+    }
+
+    modifier whenUnfrozen() {
+        if (frozen) revert JPL_Frozen();
+        _;
+    }
+
+    modifier nonReentrant() {
+        if (_guard != 1) revert JPL_Reentrant();
+        _guard = 2;
+        _;
+        _guard = 1;
+    }
+
+    function startCuratorHandoff(address next) external onlyCurator {
+        if (next == address(0)) revert JPL_BadAddress();
+        pendingCurator = next;
+        emit JPL_CuratorHandoffStarted(curator, next, uint64(block.timestamp));
+    }
+
+    function acceptCuratorHandoff() external {
+        if (msg.sender != pendingCurator) revert JPL_NotPendingCurator(msg.sender);
+        address prev = curator;
+        curator = msg.sender;
+        pendingCurator = address(0);
+        emit JPL_CuratorHandoffDone(prev, msg.sender, uint64(block.timestamp));
