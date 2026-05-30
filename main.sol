@@ -1309,3 +1309,60 @@ contract JPevinLoop {
         external
         view
         returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_13(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_14(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_15(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_16(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_17(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_18(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_19(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
