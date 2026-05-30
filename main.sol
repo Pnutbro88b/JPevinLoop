@@ -454,3 +454,174 @@ contract JPevinLoop {
     function revokeHarvest(uint64 poolId, uint64 ringId) external onlyCurator {
         HarvestRing storage ring = _rings[poolId][ringId];
         if (ring.recordedAt == 0) revert JPL_RingUnknown(poolId, ringId);
+        if (ring.revoked) revert JPL_RingRevoked(poolId, ringId);
+        ring.revoked = true;
+        emit JPL_HarvestRevoked(poolId, ringId, msg.sender, uint64(block.timestamp));
+    }
+
+    function fileRebalance(
+        uint64 poolId,
+        bytes32 targetTag,
+        bytes32 sourceTag,
+        uint256 notionalWei,
+        uint64 delaySec
+    ) external whenUnfrozen {
+        if (targetTag == bytes32(0) || sourceTag == bytes32(0)) revert JPL_RouteTagZero();
+        _requireLivePool(poolId);
+
+        uint64 laneId = uint64(rebalanceSeq);
+        RebalanceLane storage lane = _lanes[poolId][laneId];
+        lane.targetTag = targetTag;
+        lane.sourceTag = sourceTag;
+        lane.proposer = msg.sender;
+        lane.poolId = poolId;
+        lane.filedAt = uint64(block.timestamp);
+        lane.executeAfter = lane.filedAt + delaySec;
+        lane.notionalWei = notionalWei;
+        lane.open = true;
+
+        rebalanceSeq += 1;
+        emit JPL_RebalanceFiled(poolId, laneId, msg.sender, notionalWei, lane.executeAfter);
+    }
+
+    function executeRebalance(uint64 poolId, uint64 laneId) external whenUnfrozen {
+        RebalanceLane storage lane = _lanes[poolId][laneId];
+        if (!lane.open) revert JPL_LaneUnknown(poolId, laneId);
+        if (lane.executed) revert JPL_LaneAlreadyExecuted(poolId, laneId);
+        if (block.timestamp < lane.executeAfter) revert JPL_LaneNotReady(lane.executeAfter);
+
+        lane.executed = true;
+        lane.open = false;
+        emit JPL_RebalanceExecuted(poolId, laneId, msg.sender, lane.notionalWei, uint64(block.timestamp));
+    }
+
+    function scheduleCompound(uint64 poolId, bytes32 scheduleTag, uint64 intervalSec, uint256 sliceWei) external whenUnfrozen {
+        if (scheduleTag == bytes32(0)) revert JPL_IntentZero();
+        if (intervalSec == 0) revert JPL_WindowInvalid(intervalSec);
+        if (sliceWei == 0) revert JPL_WithdrawZero();
+        _requireLivePool(poolId);
+        if (!_joined[poolId][msg.sender]) revert JPL_NotJoined(poolId, msg.sender);
+
+        uint256 planId = compoundSeq;
+        CompoundPlan storage plan = _plans[planId];
+        plan.scheduleTag = scheduleTag;
+        plan.owner = msg.sender;
+        plan.poolId = poolId;
+        plan.intervalSec = intervalSec;
+        plan.nextRunAt = uint64(block.timestamp) + intervalSec;
+        plan.sliceWei = sliceWei;
+        plan.active = true;
+
+        compoundSeq += 1;
+        emit JPL_CompoundScheduled(planId, poolId, msg.sender, intervalSec, sliceWei);
+    }
+
+    function pokeCompound(uint256 planId) external whenUnfrozen nonReentrant {
+        CompoundPlan storage plan = _plans[planId];
+        if (!plan.active) revert JPL_PlanInactive(planId);
+        if (msg.sender != plan.owner) revert JPL_NotJoined(plan.poolId, msg.sender);
+        if (block.timestamp < plan.nextRunAt) revert JPL_PlanNotDue(plan.nextRunAt);
+
+        YieldPool storage p = _requireLivePool(plan.poolId);
+        DepositorSeat storage seat = _seats[plan.poolId][msg.sender];
+        if (seat.shares < plan.sliceWei) revert JPL_SharesInsufficient(plan.sliceWei, seat.shares);
+
+        uint256 assets = JPLYieldMath.assetsFromShares(plan.sliceWei, p.totalAssetsWei, p.totalShares);
+        if (assets < MIN_DEPOSIT_WEI) revert JPL_DepositTooSmall(assets, MIN_DEPOSIT_WEI);
+
+        seat.shares -= plan.sliceWei;
+        uint256 newShares = JPLYieldMath.sharesFromDeposit(assets, p.totalAssetsWei - assets, p.totalShares - plan.sliceWei);
+        seat.shares += newShares;
+
+        p.totalShares = p.totalShares - plan.sliceWei + newShares;
+        plan.nextRunAt = uint64(block.timestamp) + plan.intervalSec;
+
+        bytes32 tag = JPLDigestFork.positionTag(plan.poolId, msg.sender, uint64(planId));
+        seat.lastHarvestTag = tag;
+        seat.lastHarvestAt = uint64(block.timestamp);
+
+        emit JPL_CompoundPoked(planId, plan.poolId, msg.sender, assets, plan.nextRunAt);
+    }
+
+    function cancelCompound(uint256 planId) external {
+        CompoundPlan storage plan = _plans[planId];
+        if (plan.owner == address(0)) revert JPL_PlanUnknown(planId);
+        if (msg.sender != plan.owner && msg.sender != curator) revert JPL_NotCurator(msg.sender);
+        plan.active = false;
+        emit JPL_CompoundCancelled(planId, plan.owner, uint64(block.timestamp));
+    }
+
+    function tipPool(uint64 poolId) external payable whenUnfrozen {
+        _requirePool(poolId);
+        _pools[poolId].tipReserve += msg.value;
+        emit JPL_TipReceived(poolId, msg.sender, msg.value, _pools[poolId].tipReserve);
+    }
+
+    function withdrawTips(uint64 poolId, uint256 amountWei) external onlyCurator nonReentrant {
+        YieldPool storage p = _requirePool(poolId);
+        if (amountWei > p.tipReserve) revert JPL_TipPoolShort(amountWei, p.tipReserve);
+        p.tipReserve -= amountWei;
+        _sendWei(curator, amountWei);
+        emit JPL_TipsWithdrawn(curator, amountWei, uint64(block.timestamp));
+    }
+
+    function _pushApySnapshot(uint64 poolId, uint32 sampleBps, bytes32 blendHash, uint64 epoch) private {
+        ApySnapshot[] storage hist = _apyHistory[poolId];
+        if (hist.length >= MAX_SNAPSHOT_RING) {
+            for (uint256 i = 0; i < hist.length - 1; ++i) {
+                hist[i] = hist[i + 1];
+            }
+            hist.pop();
+        }
+        hist.push(ApySnapshot({blendHash: blendHash, sampleBps: sampleBps, capturedAt: uint64(block.timestamp), epoch: epoch}));
+        emit JPL_ApySnapshotted(poolId, epoch, sampleBps, blendHash, uint64(block.timestamp));
+    }
+
+    function _requirePool(uint64 poolId) private view returns (YieldPool storage p) {
+        p = _pools[poolId];
+        if (p.openedAt == 0) revert JPL_PoolUnknown(poolId);
+    }
+
+    function _requireLivePool(uint64 poolId) private view returns (YieldPool storage p) {
+        p = _requirePool(poolId);
+        if (p.status != POOL_STATUS_LIVE) revert JPL_PoolNotLive(poolId);
+        if (p.sealed) revert JPL_PoolSealed(poolId);
+        if (block.timestamp > p.closesAt) revert JPL_PoolNotLive(poolId);
+    }
+
+    function _sendWei(address to, uint256 amount) private {
+        (bool ok,) = to.call{value: amount}("");
+        if (!ok) revert JPL_TransferFailed();
+    }
+
+
+    function poolCount() external view returns (uint64) {
+        return lastPoolId;
+    }
+
+    function readPool(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            address curatorNote,
+            uint8 status,
+            bool harvestOpen,
+            bool sealed,
+            uint64 openedAt,
+            uint64 closesAt,
+            uint32 harvestCount,
+            uint32 depositorCount,
+            uint256 totalAssetsWei,
+            uint256 totalShares,
+            uint256 tipReserve
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (
+            p.strategyRoot,
+            p.routeTag,
+            p.curatorNote,
+            p.status,
+            p.harvestOpen,
