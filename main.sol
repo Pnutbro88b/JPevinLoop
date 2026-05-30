@@ -853,3 +853,60 @@ contract JPevinLoop {
             bytes32 routeTag,
             uint8 status,
             uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_7(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_8(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_9(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_10(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
