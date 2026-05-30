@@ -1252,3 +1252,60 @@ contract JPevinLoop {
     function readSeat_5(uint64 poolId, address depositor)
         external
         view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_6(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_7(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_8(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_9(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_10(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_11(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_12(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
