@@ -739,3 +739,60 @@ contract JPevinLoop {
 
     function anchorA() external view returns (address) {
         return ADDRESS_A;
+    }
+
+    function anchorB() external view returns (address) {
+        return ADDRESS_B;
+    }
+
+    function anchorC() external view returns (address) {
+        return ADDRESS_C;
+    }
+
+    function domainSalt() external pure returns (bytes32) {
+        return JPL_DOMAIN_SALT;
+    }
+
+    function isJoined(uint64 poolId, address depositor) external view returns (bool) {
+        return _joined[poolId][depositor];
+    }
+
+    function harvestProofUsed(bytes32 proof) external view returns (bool) {
+        return _usedHarvestProof[proof];
+    }
+
+    function readPool_0(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_1(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readPool_2(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
