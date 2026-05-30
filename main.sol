@@ -1366,3 +1366,60 @@ contract JPevinLoop {
         view
         returns (bool active, uint256 shares, uint256 creditedWei)
     {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_20(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_21(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_22(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_23(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function batchPoolStatus_0(uint64[] calldata poolIds)
+        external
+        view
+        returns (uint8[] memory statuses, uint256[] memory assets, uint256[] memory shares)
+    {
+        uint256 n = poolIds.length;
+        if (n > MAX_BATCH) revert JPL_BatchTooLarge(n, MAX_BATCH);
+        statuses = new uint8[](n);
+        assets = new uint256[](n);
+        shares = new uint256[](n);
+        for (uint256 j = 0; j < n; ++j) {
+            YieldPool storage p = _pools[poolIds[j]];
+            statuses[j] = p.status;
+            assets[j] = p.totalAssetsWei;
+            shares[j] = p.totalShares;
+        }
+    }
+    function batchPoolStatus_1(uint64[] calldata poolIds)
+        external
+        view
+        returns (uint8[] memory statuses, uint256[] memory assets, uint256[] memory shares)
+    {
