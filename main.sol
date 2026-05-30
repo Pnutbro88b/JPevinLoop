@@ -1195,3 +1195,60 @@ contract JPevinLoop {
         YieldPool storage p = _pools[poolId];
         return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
     }
+    function readPool_31(uint64 poolId)
+        external
+        view
+        returns (
+            bytes32 strategyRoot,
+            bytes32 routeTag,
+            uint8 status,
+            uint256 totalAssetsWei,
+            uint256 totalShares
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        return (p.strategyRoot, p.routeTag, p.status, p.totalAssetsWei, p.totalShares);
+    }
+    function readSeat_0(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_1(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_2(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_3(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_4(uint64 poolId, address depositor)
+        external
+        view
+        returns (bool active, uint256 shares, uint256 creditedWei)
+    {
+        DepositorSeat storage s = _seats[poolId][depositor];
+        return (s.active, s.shares, s.creditedWei);
+    }
+    function readSeat_5(uint64 poolId, address depositor)
+        external
+        view
