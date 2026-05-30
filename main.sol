@@ -340,3 +340,60 @@ contract JPevinLoop {
         YieldPool storage p = _requirePool(poolId);
         p.sealed = true;
         p.harvestOpen = false;
+        emit JPL_PoolSealed(poolId, p.harvestCount, p.depositorCount, p.totalAssetsWei);
+    }
+
+    function retirePool(uint64 poolId) external onlyCurator {
+        YieldPool storage p = _requirePool(poolId);
+        p.status = POOL_STATUS_RETIRED;
+        p.harvestOpen = false;
+        emit JPL_PoolRetired(poolId, uint64(block.timestamp));
+    }
+
+    function deposit(uint64 poolId, bytes32 intentHash) external payable whenUnfrozen nonReentrant {
+        if (msg.value < MIN_DEPOSIT_WEI) revert JPL_DepositTooSmall(msg.value, MIN_DEPOSIT_WEI);
+        if (intentHash == bytes32(0)) revert JPL_IntentZero();
+
+        YieldPool storage p = _requireLivePool(poolId);
+        if (_joined[poolId][msg.sender]) revert JPL_AlreadyJoined(poolId, msg.sender);
+
+        uint256 shares = JPLYieldMath.sharesFromDeposit(msg.value, p.totalAssetsWei, p.totalShares);
+        if (shares == 0) shares = msg.value;
+
+        DepositorSeat storage seat = _seats[poolId][msg.sender];
+        seat.intentHash = intentHash;
+        seat.active = true;
+        seat.joinedAt = uint64(block.timestamp);
+        seat.shares = shares;
+        seat.creditedWei = msg.value;
+
+        p.totalAssetsWei += msg.value;
+        p.totalShares += shares;
+        p.depositorCount += 1;
+        globalDepositWei += msg.value;
+
+        _joined[poolId][msg.sender] = true;
+        _depositors[poolId].push(msg.sender);
+        _poolsOf[msg.sender].push(poolId);
+
+        emit JPL_Deposited(poolId, msg.sender, msg.value, shares, p.totalAssetsWei);
+    }
+
+    function depositMore(uint64 poolId) external payable whenUnfrozen nonReentrant {
+        if (msg.value < MIN_DEPOSIT_WEI) revert JPL_DepositTooSmall(msg.value, MIN_DEPOSIT_WEI);
+        YieldPool storage p = _requireLivePool(poolId);
+        if (!_joined[poolId][msg.sender]) revert JPL_NotJoined(poolId, msg.sender);
+
+        uint256 shares = JPLYieldMath.sharesFromDeposit(msg.value, p.totalAssetsWei, p.totalShares);
+        if (shares == 0) shares = msg.value;
+
+        DepositorSeat storage seat = _seats[poolId][msg.sender];
+        seat.shares += shares;
+        seat.creditedWei += msg.value;
+
+        p.totalAssetsWei += msg.value;
+        p.totalShares += shares;
+        globalDepositWei += msg.value;
+
+        emit JPL_Deposited(poolId, msg.sender, msg.value, shares, p.totalAssetsWei);
+    }
