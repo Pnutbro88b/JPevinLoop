@@ -283,3 +283,60 @@ contract JPevinLoop {
         curator = msg.sender;
         pendingCurator = address(0);
         emit JPL_CuratorHandoffDone(prev, msg.sender, uint64(block.timestamp));
+    }
+
+    function setFrozen(bool isFrozen) external onlyCurator {
+        frozen = isFrozen;
+        emit JPL_FreezeSet(isFrozen, msg.sender, uint64(block.timestamp));
+    }
+
+    function openPool(uint64 poolId, bytes32 strategyRoot, bytes32 routeTag, uint64 windowSec) external onlyCurator whenUnfrozen {
+        _openPool(poolId, strategyRoot, routeTag, windowSec, POOL_STATUS_LIVE);
+    }
+
+    function openPoolDormant(uint64 poolId, bytes32 strategyRoot, bytes32 routeTag, uint64 windowSec) external onlyCurator whenUnfrozen {
+        _openPool(poolId, strategyRoot, routeTag, windowSec, POOL_STATUS_DORMANT);
+    }
+
+    function _openPool(uint64 poolId, bytes32 strategyRoot, bytes32 routeTag, uint64 windowSec, uint8 status) private {
+        if (poolId > MAX_POOL_ID) revert JPL_PoolIdOutOfRange(poolId);
+        if (strategyRoot == bytes32(0)) revert JPL_StrategyRootZero();
+        if (routeTag == bytes32(0)) revert JPL_RouteTagZero();
+        if (windowSec == 0 || windowSec > HARVEST_COOLDOWN_SEC * 48) revert JPL_WindowInvalid(windowSec);
+        if (status != POOL_STATUS_DORMANT && status != POOL_STATUS_LIVE) revert JPL_StatusInvalid(status);
+
+        YieldPool storage p = _pools[poolId];
+        if (p.openedAt != 0) revert JPL_PoolAlreadyLive(poolId);
+
+        p.strategyRoot = strategyRoot;
+        p.routeTag = routeTag;
+        p.curatorNote = msg.sender;
+        p.status = status;
+        p.harvestOpen = true;
+        p.openedAt = uint64(block.timestamp);
+        p.closesAt = p.openedAt + windowSec;
+
+        if (poolId > lastPoolId) lastPoolId = poolId;
+
+        emit JPL_PoolOpened(poolId, strategyRoot, routeTag, p.openedAt, p.closesAt, status);
+    }
+
+    function extendPool(uint64 poolId, uint64 extraSec) external onlyCurator whenUnfrozen {
+        YieldPool storage p = _requirePool(poolId);
+        if (p.sealed) revert JPL_PoolSealed(poolId);
+        if (extraSec == 0 || extraSec > HARVEST_COOLDOWN_SEC * 24) revert JPL_WindowInvalid(extraSec);
+        p.closesAt += extraSec;
+        emit JPL_PoolExtended(poolId, p.closesAt, uint64(block.timestamp));
+    }
+
+    function activatePool(uint64 poolId) external onlyCurator whenUnfrozen {
+        YieldPool storage p = _requirePool(poolId);
+        if (p.sealed) revert JPL_PoolSealed(poolId);
+        if (p.status == POOL_STATUS_RETIRED) revert JPL_PoolRetired(poolId);
+        p.status = POOL_STATUS_LIVE;
+    }
+
+    function sealPool(uint64 poolId) external onlyCurator {
+        YieldPool storage p = _requirePool(poolId);
+        p.sealed = true;
+        p.harvestOpen = false;
