@@ -1708,3 +1708,45 @@ contract JPevinLoop {
         )
     {
         return (lastPoolId, globalHarvestCount, globalDepositWei, rebalanceSeq, compoundSeq, harvestLeafSeq);
+    }
+
+    function poolHealth(uint64 poolId)
+        external
+        view
+        returns (
+            bool live,
+            bool sealed,
+            bool expired,
+            uint32 harvestCount,
+            uint32 depositorCount,
+            uint256 tipReserve
+        )
+    {
+        YieldPool storage p = _pools[poolId];
+        live = p.status == POOL_STATUS_LIVE && !p.sealed && block.timestamp <= p.closesAt;
+        sealed = p.sealed;
+        expired = block.timestamp > p.closesAt;
+        harvestCount = p.harvestCount;
+        depositorCount = p.depositorCount;
+        tipReserve = p.tipReserve;
+    }
+
+    function latestApy(uint64 poolId) external view returns (uint32 sampleBps, bytes32 blendHash, uint64 capturedAt) {
+        ApySnapshot[] storage hist = _apyHistory[poolId];
+        if (hist.length == 0) return (0, bytes32(0), 0);
+        ApySnapshot storage snap = hist[hist.length - 1];
+        return (snap.sampleBps, snap.blendHash, snap.capturedAt);
+    }
+
+    function ringDigestView(uint64 poolId, bytes32 routeTag, uint64 harvestSeq) external pure returns (bytes32) {
+        return JPLYieldMath.ringDigest(poolId, routeTag, harvestSeq);
+    }
+
+    function mulBpsView(uint256 amount, uint32 bps) external pure returns (uint256) {
+        return JPLYieldMath.mulBps(amount, bps);
+    }
+
+    function clampBpsView(uint32 value, uint32 ceiling) external pure returns (uint32) {
+        return JPLYieldMath.clampBps(value, ceiling);
+    }
+}
