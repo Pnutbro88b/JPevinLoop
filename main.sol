@@ -1651,3 +1651,60 @@ contract JPevinLoop {
         shares = new uint256[](n);
         for (uint256 j = 0; j < n; ++j) {
             YieldPool storage p = _pools[poolIds[j]];
+            statuses[j] = p.status;
+            assets[j] = p.totalAssetsWei;
+            shares[j] = p.totalShares;
+        }
+    }
+    function batchPoolStatus_15(uint64[] calldata poolIds)
+        external
+        view
+        returns (uint8[] memory statuses, uint256[] memory assets, uint256[] memory shares)
+    {
+        uint256 n = poolIds.length;
+        if (n > MAX_BATCH) revert JPL_BatchTooLarge(n, MAX_BATCH);
+        statuses = new uint8[](n);
+        assets = new uint256[](n);
+        shares = new uint256[](n);
+        for (uint256 j = 0; j < n; ++j) {
+            YieldPool storage p = _pools[poolIds[j]];
+            statuses[j] = p.status;
+            assets[j] = p.totalAssetsWei;
+            shares[j] = p.totalShares;
+        }
+    }
+    function estimateWithdraw(uint64 poolId, uint256 shareAmt)
+        external
+        view
+        returns (uint256 assetsOut, uint256 remainingShares)
+    {
+        YieldPool storage p = _pools[poolId];
+        DepositorSeat storage seat = _seats[poolId][msg.sender];
+        if (shareAmt > seat.shares) revert JPL_SharesInsufficient(shareAmt, seat.shares);
+        assetsOut = JPLYieldMath.assetsFromShares(shareAmt, p.totalAssetsWei, p.totalShares);
+        remainingShares = seat.shares - shareAmt;
+    }
+
+    function estimateDeposit(uint64 poolId, uint256 depositWei)
+        external
+        view
+        returns (uint256 sharesOut, uint256 newTotalAssets)
+    {
+        YieldPool storage p = _pools[poolId];
+        sharesOut = JPLYieldMath.sharesFromDeposit(depositWei, p.totalAssetsWei, p.totalShares);
+        newTotalAssets = p.totalAssetsWei + depositWei;
+    }
+
+    function globalStats()
+        external
+        view
+        returns (
+            uint64 pools,
+            uint256 harvests,
+            uint256 deposits,
+            uint256 rebalances,
+            uint256 compounds,
+            uint256 leaves
+        )
+    {
+        return (lastPoolId, globalHarvestCount, globalDepositWei, rebalanceSeq, compoundSeq, harvestLeafSeq);
